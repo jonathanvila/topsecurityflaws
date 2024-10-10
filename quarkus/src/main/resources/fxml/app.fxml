@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Label?>
+<?import javafx.scene.control.TextField?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Font?>
+
+<VBox fx:id="root" alignment="CENTER" spacing="10.0" xmlns="http://javafx.com/javafx/22" xmlns:fx="http://javafx.com/fxml/1" fx:controller="org.vilojona.topsecurityflaws.sqlinjection.FXMainController">
+   <children>
+        <VBox spacing="10">
+            <HBox spacing="10" style="-fx-padding: 10 10 10 10;">
+              <Label text="Username">
+               <font>
+                  <Font size="36.0" />
+               </font>
+              </Label>
+              <TextField fx:id="usernameField">
+               <font>
+                  <Font size="36.0" />
+               </font></TextField>
+            </HBox>
+            <HBox spacing="10" style="-fx-padding: 10 10 10 10;">
+              <Label text="Password">
+               <font>
+                  <Font size="36.0" />
+               </font></Label>
+              <TextField fx:id="passwordField" onKeyPressed="#handleClickMeAction" HBox.hgrow="ALWAYS">
+               <font>
+                  <Font size="36.0" />
+               </font></TextField>
+            </HBox>
+            <HBox spacing="10" style="-fx-padding: 10 10 10 10;">
+                <Label fx:id="responseLabel" style="-fx-padding: 10 10 10 10; -fx-background-color: lightgrey;" HBox.hgrow="ALWAYS">
+                <font>
+                <Font size="36.0" />
+                </font></Label>
+            </HBox>
+        </VBox>
+
+   </children>
+
+</VBox>
