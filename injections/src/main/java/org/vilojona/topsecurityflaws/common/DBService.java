@@ -45,8 +45,8 @@ public class DBService {
     public String login(String username, String password) throws SQLException {
         try {
             // Execute the query
-            String mode = "PrepareStatement";
-            ResultSet resultSet = mode.equals("PrepareStatement") ? executeQueryPrepareStatement(username, password)
+            boolean secureMode = false; //Change to false to test SQL Injection vulnerability
+            ResultSet resultSet = secureMode ? executeQueryPrepareStatement(username, password)
                     : executeQueryStringConcatenation(username, password);
 
             String response = username + " : ";

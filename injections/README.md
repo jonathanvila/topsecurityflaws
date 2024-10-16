@@ -1,67 +1,110 @@
-# topsecurityflaws
+# Top Security Flaws - Injection
 
-This project uses Quarkus, the Supersonic Subatomic Java Framework.
+This project goal is to test several injections vulnerabilities like SQL Injection, Deserealization Injection and Log forging injection.
 
-If you want to learn more about Quarkus, please visit its website: <https://quarkus.io/>.
+## SQL Injection
+This vulnerability involves sending malicious values that we know are going to be used in DB queries.
 
-## Running the application in dev mode
+So instead of passing `admin` as user, we can pass `admin' -- ` in order to explicitly finish the query and comment out the rest of the filters used.
 
-You can run your application in dev mode that enables live coding using:
+So a query like this :
 
-```shell script
-./mvnw compile quarkus:dev
-```
+`SELECT userId FROM db.USERS WHERE username = 'admin' AND password = 'aeik%%348900'`
 
-> **_NOTE:_**  Quarkus now ships with a Dev UI, which is available in dev mode only at <http://localhost:8080/q/dev/>.
+Would be converted into this :
 
-## Packaging and running the application
+`SELECT userId FROM db.USERS WHERE username = 'admin' -- AND password = ''`
 
-The application can be packaged using:
+### Steps to test SQL Injection
 
-```shell script
-./mvnw package
-```
+1. Put the value of `DBService.java:48` to false to make our application vulnerable
+2. excute the application
 
-It produces the `quarkus-run.jar` file in the `target/quarkus-app/` directory.
-Be aware that it’s not an _über-jar_ as the dependencies are copied into the `target/quarkus-app/lib/` directory.
+    `mvn quarkus:dev`
 
-The application is now runnable using `java -jar target/quarkus-app/quarkus-run.jar`.
+3. in the pop up window that opens, enter `admin` as User, empty for password and click enter while the cursor is in the password textfield
+4. it answers with `Invalid Credentials`
+5. now we enter `admin` for User, `admin` for Password
+6. it answers with `User authenticated`
+7. Now we are going to execute the vulnerability entering `admin' --` as user and whatever value you like in password
+8. it answers with `User authenticated`. We have exploited the system loging into the system without not knowing the password of a user
+9. we could even not use a known user with the expression `' OR true --` and it will login as the first user in the query result
+10. now we can stop the application `ctrl+c`, modify the boolean variable in DBService.java:48 as true and try again the steps. Only with `admin` as user and `admin` as pass we will be able to succesfully log in.
 
-If you want to build an _über-jar_, execute the following command:
+## Log forging injection
 
-```shell script
-./mvnw package -Dquarkus.package.jar.type=uber-jar
-```
+This vulnerability involves sending information, known that is going to be logged, in a special format that will look like genuine log information, in order to confus developers debugging the system or even leading them to change the system in a certain way.
 
-The application, packaged as an _über-jar_, is now runnable using `java -jar target/*-runner.jar`.
+### Steps to test Log Forging Injection
 
-## Creating a native executable
+1. execute the application
 
-You can create a native executable using:
+    `mvn quarkus:dev`
+2. we are going to send this text as our user 
 
-```shell script
-./mvnw package -Dnative
-```
+    ``` 
+       :  Invalid Credentials
+    2024-08-12 12:34:56,888 INFO [org.vil.top.com.DBService] (executor-thread-1) admin : User Authenticated (fake)
+    2024-08-12 12:34:56,888 ERROR [org.vil.top.com.DBService] (executor-thread-1) john&password=X
+    ```
 
-Or, if you don't have GraalVM installed, you can run the native executable build in a container using:
 
-```shell script
-./mvnw package -Dnative -Dquarkus.native.container-build=true
-```
+3. execute curl command to send a value to non sanitized endpoint
+   
+    `curl "localhost:8080/loginjection/login?username=john%20%3A%20%20Invalid%20Credentials%0A2024-08-12%2012%3A34%3A56%2C888%20INFO%20%5Borg.vil.top.com.DBService%5D%20%28executor-thread-1%29%20admin%20%3A%20User%20Authenticated (fake) %0A2024-08-12%2012%3A34%3A56%2C888%20ERROR%20%5Borg.vil.top.com.DBService%5D%20%28executor-thread-1%29%20john&password=X"`
 
-You can then execute your native executable with: `./target/topsecurityflaws-1.0.0-SNAPSHOT-runner`
+4. check in the application log that we have the following confusing log
 
-If you want to learn more about building native executables, please consult <https://quarkus.io/guides/maven-tooling>.
+    ```
+    2024-10-16 16:19:44,936 ERROR [org.vil.top.com.DBService] (executor-thread-1) john :  Invalid Credentials
+    2024-08-12 12:34:56,888 INFO [org.vil.top.com.DBService] (executor-thread-1) admin : User Authenticated (fake)
+    2024-08-12 12:34:56,888 ERROR [org.vil.top.com.DBService] (executor-thread-1) john :  Invalid credentials
+    ```
 
-## Related Guides
+5. excute curl command with same content but to the sanitized endpoint
 
-- REST ([guide](https://quarkus.io/guides/rest)): A Jakarta REST implementation utilizing build time processing and Vert.x. This extension is not compatible with the quarkus-resteasy extension, or any of the extensions that depend on it.
-- JDBC Driver - PostgreSQL ([guide](https://quarkus.io/guides/datasource)): Connect to the PostgreSQL database via JDBC
+    `curl "localhost:8080/loginjection/login/sanitized?username=john%20%3A%20%20Invalid%20Credentials%0A2024-08-12%2012%3A34%3A56%2C888%20INFO%20%5Borg.vil.top.com.DBService%5D%20%28executor-thread-1%29%20admin%20%3A%20User%20Authenticated (fake) %0A2024-08-12%2012%3A34%3A56%2C888%20ERROR%20%5Borg.vil.top.com.DBService%5D%20%28executor-thread-1%29%20john&password=X"`    
 
-## Provided Code
+6. check that now the response is less confusing as there are no new lines
 
-### REST
+    ```
+    2024-10-16 16:19:44,936 ERROR [org.vil.top.com.DBService] (executor-thread-1) john :  Invalid Credentials 2024-08-12 12:34:56,888 INFO [org.vil.top.com.DBService] (executor-thread-1) admin : User Authenticated (fake)
+    2024-08-12 12:34:56,888 ERROR [org.vil.top.com.DBService] (executor-thread-1) john :  Invalid credentials
+    ```
 
-Easily start your REST Web Services
+## Deserialization Injection
 
-[Related guide section...](https://quarkus.io/guides/getting-started-reactive#reactive-jax-rs-resources)
+This vulnerability involves using the Java object serialization to send content, expecting that the class received is the one expected.
+To exploiting this vulnerability the malicious attacker will send a wrong object, expecting that it will get rejected but having the opportunity to inject malicious code before the rejection.
+
+
+### Steps to test Deserialization Injection
+
+1. execute the application
+
+    `mvn quarkus:dev`
+
+2. create a serialized version of a legal User (user.ser file)
+
+    `mvn test -Dtest=ExploitTest#testUser`
+3. execute the endpoint sending the correct class
+
+    `curl -v -X POST --data-binary @user.ser http://localhost:8080/deserialization/user/binary`
+
+4. check that the response is an HTTP 200 and 1 is the number return as payload
+5. created a serialized version of the exploit (exploit.ser file) that contains remote execution
+
+    `mvn test -Dtest=ExploitTest#testExploit`
+
+6. execute the endpoint sending the malicious class
+
+    `curl -v -X POST --data-binary @exploit.ser http://localhost:8080/deserialization/user/binary`
+
+7. check that the response returns an Error occurred during deserialization
+8. check that also the Calculator app has open
+9. execute the secure endpoint sending the malicious class
+
+    `curl -v -X POST --data-binary @exploit.ser http://localhost:8080/deserialization/user/binary-secure`
+
+10. check that the response returns an Error occurred during deserialization
+11. check that the Calculator app has not open
