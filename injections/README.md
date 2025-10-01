@@ -106,5 +106,6 @@ To exploiting this vulnerability the malicious attacker will send a wrong object
 
     `curl -v -X POST --data-binary @exploit.ser http://localhost:8080/deserialization/user/binary-secure`
 
-10. check that the response returns an Error occurred during deserialization
+10. check that the response returns an Error occurred during deserialization including the `filter status: REJECTED`
+
 11. check that the Calculator app has not open

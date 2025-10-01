@@ -3,6 +3,7 @@ package org.vilojona.topsecurityflaws.deserialization;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
+import java.io.ObjectInputFilter;
 import java.sql.SQLException;
 import java.util.List;
 
@@ -54,9 +55,18 @@ public class DeserializationResource {
     @POST
     @Path("/binary-secure")
     public String saveBinarySecure(InputStream userStream) throws SQLException, ClassNotFoundException, IOException {
-        Log.info("Saving binary-secure user ");
-        try {
-            ObjectInputStream objectInputStream = new SecureObjectInputStream(userStream);
+        Log.info("Saving binary-secure user with a context-specific filter");
+
+        // This filter allows the specific User class and rejects all others (!*).
+        ObjectInputFilter filter = ObjectInputFilter.Config.createFilter(
+                "org.vilojona.topsecurityflaws.common.User;!*"
+        );
+
+        try (ObjectInputStream objectInputStream = new ObjectInputStream(userStream)) {
+            //  Applying the filter to this specific stream
+            objectInputStream.setObjectInputFilter(filter);
+
+            //Proceed with deserialization safely
             User user = (User) objectInputStream.readObject();
             return String.valueOf(dbService.save(user));
         } catch (Exception e) {
